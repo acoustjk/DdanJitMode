@@ -1,0 +1,52 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- 인터넷 권한: 실시간 교통 신호 API 호출용 -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- 위치 권한: GPS 기반 차량 속도 감지용 -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
+    <!-- 백그라운드 위치 권한: 앱이 백그라운드에 있을 때도 위치를 추적하기 위함 (Android 10+) -->
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+
+    <!-- 포그라운드 서비스 권한 (Android 9+) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+
+    <!-- 포그라운드 서비스 위치 타입 권한 (Android 14+) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+
+    <!-- 다른 앱 위에 그리기 권한 (플로팅 위젯용) -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
+    <!-- 알림 표시 권한 (Android 13+ 포그라운드 알림용) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <application
+        android:allowBackup="true"
+        android:label="DdanJitMode"
+        android:supportsRtl="true">
+        
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- 
+            포그라운드 서비스 등록
+            Android 14(API 34)부터는 foregroundServiceType을 명시해야 하며, 
+            위치 추적 서비스의 경우 "location" 타입을 지정해야 합니다.
+        -->
+        <service
+            android:name=".SignalService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="location" />
+
+    </application>
+
+</manifest>
