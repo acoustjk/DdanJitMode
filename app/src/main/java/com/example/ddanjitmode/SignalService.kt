@@ -155,6 +155,7 @@ class SignalService : Service() {
 
         timerJob = serviceScope.launch {
             widgetManager.updateState(
+                title = "📍 검색 중...",
                 straightText = "🔄 검색", isStraightGreen = false,
                 leftText = "🔄 검색", isLeftGreen = false
             )
@@ -244,8 +245,9 @@ class SignalService : Service() {
                     val lText = if (leftPhase.uppercase() == "GREEN") "🟢 주행" else "🔴 $leftTime"
                     val lGreen = leftPhase.uppercase() == "GREEN"
 
-                    // 플로팅 위젯 상태 갱신
+                    // 플로팅 위젯 상태 갱신 (헤더에 실제 교차로명 표출)
                     widgetManager.updateState(
+                        title = "📍 $intersectionName",
                         straightText = sText, isStraightGreen = sGreen,
                         leftText = lText, isLeftGreen = lGreen
                     )
@@ -264,6 +266,7 @@ class SignalService : Service() {
     // 데모 시뮬레이션 모드: 직진 신호와 좌회전 신호가 각각 차이를 두고 변환하는 실제 도로 시나리오 시뮬레이션
     private suspend fun runDemoSimulation() {
         widgetManager.updateState(
+            title = "📍 데모 (로딩)",
             straightText = "🔄 로딩", isStraightGreen = false,
             leftText = "🔄 로딩", isLeftGreen = false
         )
@@ -326,6 +329,7 @@ class SignalService : Service() {
                 }
 
                 widgetManager.updateState(
+                    title = "📍 강남역 (데모)",
                     straightText = sText, isStraightGreen = (sPhase == "GREEN"),
                     leftText = lText, isLeftGreen = (lPhase == "GREEN")
                 )

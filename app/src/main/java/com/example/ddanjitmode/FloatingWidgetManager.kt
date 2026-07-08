@@ -36,7 +36,9 @@ class FloatingWidgetManager(private val context: Context) {
     private val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
     private var composeView: ComposeView? = null
     
-    // 듀얼 신호 상태 데이터 관리 (직진 / 좌회전)
+    // 듀얼 신호 및 현재 교차로 타이틀 상태 데이터 관리
+    private val titleState = mutableStateOf("📍 검색 중...")
+    
     private val straightTextState = mutableStateOf("🔴 10")
     private val isStraightGreenState = mutableStateOf(false)
     
@@ -50,7 +52,7 @@ class FloatingWidgetManager(private val context: Context) {
     fun show() {
         if (composeView != null) return // 이미 표시 중이면 무시
 
-        // 1. 윈도우 파라미터 설정 (가로 길이를 듀얼 신호 표시에 맞게 조절: 가로 180dp 수준)
+        // 1. 윈도우 파라미터 설정 (타이틀 추가로 세로 길이가 약간 증가하므로 WRAP_CONTENT 자동 대응)
         params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
@@ -72,6 +74,7 @@ class FloatingWidgetManager(private val context: Context) {
         val view = ComposeView(context).apply {
             setContent {
                 FloatingWidgetContent(
+                    title = titleState.value,
                     straightText = straightTextState.value,
                     isStraightGreen = isStraightGreenState.value,
                     leftText = leftTextState.value,
@@ -125,13 +128,15 @@ class FloatingWidgetManager(private val context: Context) {
         }
     }
 
-    // 듀얼 신호 상태 업데이트 호출
+    // 듀얼 신호 및 교차로 타이틀 상태 업데이트 호출
     fun updateState(
+        title: String,
         straightText: String, 
         isStraightGreen: Boolean, 
         leftText: String, 
         isLeftGreen: Boolean
     ) {
+        titleState.value = title
         straightTextState.value = straightText
         isStraightGreenState.value = isStraightGreen
         
@@ -186,77 +191,93 @@ class FloatingWidgetManager(private val context: Context) {
     }
 }
 
-// 7. 가로 캡슐형 듀얼 신호 위젯 Compose UI
+// 7. 가로 캡슐형 듀얼 신호 위젯 Compose UI (상단 교차로명 헤더 추가)
 @Composable
 fun FloatingWidgetContent(
+    title: String,
     straightText: String, 
     isStraightGreen: Boolean, 
     leftText: String, 
     isLeftGreen: Boolean
 ) {
-    // 듀얼 신호를 한눈에 감싸는 프리미엄 글래스모피즘 테두리/배경 디자인
     val widgetBorderGradient = Brush.horizontalGradient(
         listOf(Color(0xFF37474F), Color(0xFF455A64))
     )
 
-    Row(
+    Column(
         modifier = Modifier
             .wrapContentSize()
-            .clip(RoundedCornerShape(32.dp))
+            .clip(RoundedCornerShape(20.dp))
             .background(Color(0xE61A237E)) // 짙은 네이비 반투명 배경
-            .border(2.5.dp, widgetBorderGradient, RoundedCornerShape(32.dp))
-            .padding(horizontal = 14.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+            .border(2.dp, widgetBorderGradient, RoundedCornerShape(20.dp))
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // [좌측] 직진 신호부 (↑)
-        SignalIndicator(
-            label = "직진 ↑",
-            text = straightText,
-            isGreen = isStraightGreen
+        // [상단 중앙] 교차로명 또는 데모 상태 헤더
+        Text(
+            text = title,
+            color = Color(0xE6FFFFFF),
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center
         )
+        
+        Spacer(modifier = Modifier.height(6.dp))
 
-        // [중앙] 세로 구분선
-        Box(
-            modifier = Modifier
-                .width(1.5.dp)
-                .height(42.dp)
-                .background(Color(0x33FFFFFF))
-        )
+        // [하단] 직진 / 좌회전 듀얼 신호 영역
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // [좌측] 직진 신호부 (↑)
+            SignalIndicator(
+                label = "직진 ↑",
+                text = straightText,
+                isGreen = isStraightGreen
+            )
 
-        // [우측] 좌회전 신호부 (←)
-        SignalIndicator(
-            label = "좌회전 ←",
-            text = leftText,
-            isGreen = isLeftGreen
-        )
+            // [중앙] 세로 구분선
+            Box(
+                modifier = Modifier
+                    .width(1.dp)
+                    .height(36.dp)
+                    .background(Color(0x22FFFFFF))
+            )
+
+            // [우측] 좌회전 신호부 (←)
+            SignalIndicator(
+                label = "좌회전 ←",
+                text = leftText,
+                isGreen = isLeftGreen
+            )
+        }
     }
 }
 
 // 개별 신호 표시용 Composable
 @Composable
 fun SignalIndicator(label: String, text: String, isGreen: Boolean) {
-    val indicatorBg = if (isGreen) Color(0x204CAF50) else Color(0x20F44336)
+    val indicatorBg = if (isGreen) Color(0x1A4CAF50) else Color(0x1AF44336)
     val textThemeColor = if (isGreen) Color(0xFF81C784) else Color(0xFFE57373)
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(10.dp))
             .background(indicatorBg)
-            .padding(horizontal = 10.dp, vertical = 6.dp)
+            .padding(horizontal = 8.dp, vertical = 4.dp)
     ) {
         Text(
             text = label,
-            color = Color(0xB3FFFFFF),
-            fontSize = 10.sp,
+            color = Color(0x99FFFFFF),
+            fontSize = 9.sp,
             fontWeight = FontWeight.Medium
         )
-        Spacer(modifier = Modifier.height(3.dp))
+        Spacer(modifier = Modifier.height(2.dp))
         Text(
             text = text,
             color = textThemeColor,
-            fontSize = 15.sp,
+            fontSize = 13.sp,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center
         )
