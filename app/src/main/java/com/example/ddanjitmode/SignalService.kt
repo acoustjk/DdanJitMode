@@ -165,7 +165,7 @@ class SignalService : Service() {
             // 1. 근처 교차로 매칭 API 호출 (전체 리스트 중 100m 이내 최인접 교차로 탐색)
             try {
                 val response = withContext(Dispatchers.IO) {
-                    TrafficSignalApiClient.service.getItstList(pageNo = 1, numOfRows = 100)
+                    TrafficSignalApiClient.service.getItstList(pageNo = 1, numOfRows = 5000)
                 }
                 val items = response.response.body?.items?.item
                 if (!items.isNullOrEmpty()) {
