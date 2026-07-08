@@ -1,0 +1,14 @@
+API 구분,필드명(영어),필드명(한글),데이터 타입,설명/범위,비고
+교차로 목록 (getItstList),itstId,교차로 ID,String,교차로 고유 식별 코드,필수 키
+교차로 목록 (getItstList),itstNm,교차로명,String,교차로의 한글 명칭 (예: 강남역 사거리),-
+교차로 목록 (getItstList),la,위도,Double,교차로의 GPS 위도 좌표 (Latitude),-
+교차로 목록 (getItstList),lo,경도,Double,교차로의 GPS 경도 좌표 (Longitude),-
+교차로 목록 (getItstList),ltcCode,지자체 코드,String,해당 교차로를 관할하는 자치단체 행정 코드,-
+교차로 목록 (getItstList),limitSpeed,제한 속도,Integer,교차로 진입 도로의 최고 제한 속도 (km/h),-
+교차로 목록 (getItstList),laneWidth,차로 폭,Double,해당 교차로 진입 차선의 평균 폭 (m),-
+실시간 신호 (getSgList),itstId,교차로 ID,String,해당 신호등이 위치한 교차로 식별 ID,교차로 목록과 매핑
+실시간 신호 (getSgList),sgId,신호등 ID,String,해당 교차로 내 개별 신호제어기 고유 식별 ID,-
+실시간 신호 (getSgList),color,신호 색상,String,"현재 점등된 신호등 상태 (RED: 적색, GREEN: 녹색, YELLOW: 황색)","직진/좌회전 방향별 색상 구분"
+실시간 신호 (getSgList),tr,신호 잔여 시간,Integer,현재 점등된 신호등 색상의 남은 잔여 시간 (초 단위),0이 되면 다음 위상으로 전환
+실시간 신호 (getSgList),dir,방향 코드,String,"신호등의 진행 방향 (1: 북, 2: 동, 3: 남, 4: 서, 5: 북동, 6: 남동, 7: 남서, 8: 북서)",8방향 코드 체계
+실시간 신호 (getSgList),sgType,신호 유형,String,"신호등이 제어하는 흐름 유형 (Straight: 직진, Left: 좌회전, Pedestrian: 보행 등)",직진/좌회전 필터링에 활용
