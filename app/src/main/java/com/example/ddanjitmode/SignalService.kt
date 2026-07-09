@@ -174,8 +174,12 @@ class SignalService : Service() {
                     var matchedItst: IntersectionItem? = null
                     
                     for (item in items) {
+                        val latVal = item.mapCtptIntLat.toDoubleOrNull()
+                        val lotVal = item.mapCtptIntLot.toDoubleOrNull()
+                        if (latVal == null || lotVal == null) continue
+
                         val results = FloatArray(1)
-                        Location.distanceBetween(latitude, longitude, item.la, item.lo, results)
+                        Location.distanceBetween(latitude, longitude, latVal, lotVal, results)
                         val distance = results[0].toDouble()
                         
                         if (distance < 100.0 && distance < minDistance) {
@@ -185,8 +189,8 @@ class SignalService : Service() {
                     }
                     
                     if (matchedItst != null) {
-                        intersectionId = matchedItst!!.itstId
-                        intersectionName = matchedItst!!.itstNm
+                        intersectionId = matchedItst!!.crsrdId
+                        intersectionName = matchedItst!!.crsrdNm
                         Log.d(TAG, "최인접 교차로 매칭 성공: $intersectionName ($intersectionId)")
                     }
                 }
@@ -203,9 +207,9 @@ class SignalService : Service() {
 
             // 2. 실시간 신호 카운트다운 및 주기적 동기화 폴링 루프 (실제 API 매핑)
             var straightTime = 0
-            var straightPhase = "RED"
+            var isStraightGreen = false
             var leftTime = 0
-            var leftPhase = "RED"
+            var isLeftGreen = false
 
             while (isActive && isStoppedState) {
                 try {
@@ -215,20 +219,16 @@ class SignalService : Service() {
                     }
                     val items = statusResponse.response.body?.items?.item
                     if (!items.isNullOrEmpty()) {
-                        // 직진 신호와 좌회전 신호를 신호등 ID(sgId) 또는 인덱스로 분리 매핑
-                        val straightSignal = items.find { it.sgId.contains("S") || it.sgId.contains("straight", true) } ?: items.getOrNull(0)
-                        val leftSignal = items.find { it.sgId.contains("L") || it.sgId.contains("left", true) } ?: items.getOrNull(1)
-
-                        if (straightSignal != null) {
-                            straightTime = straightSignal.tr
-                            straightPhase = straightSignal.color
-                        }
-                        if (leftSignal != null) {
-                            leftTime = leftSignal.tr
-                            leftPhase = leftSignal.color
-                        }
+                        val targetSignal = items.first()
                         
-                        Log.d(TAG, "실서버 듀얼 신호 동기화: $intersectionName -> [직진] ${straightPhase}(${straightTime}s) [좌회전] ${leftPhase}(${leftTime}s)")
+                        // C-ITS 다중 방향 파싱 헬퍼 함수 호출 (센티초 -> 초 자동 변환됨)
+                        straightTime = targetSignal.getActiveStraightTime()
+                        isStraightGreen = targetSignal.isStraightGreen()
+                        
+                        leftTime = targetSignal.getActiveLeftTime()
+                        isLeftGreen = targetSignal.isLeftGreen()
+                        
+                        Log.d(TAG, "실서버 C-ITS 듀얼 신호 동기화: $intersectionName -> [직진] Green($isStraightGreen), Time(${straightTime}s) | [좌회전] Green($isLeftGreen), Time(${leftTime}s)")
                     }
                 } catch (e: Exception) {
                     Log.e(TAG, "신호 데이터 갱신 실패: ${e.message}. 로컬 연산을 계속합니다.")
@@ -239,20 +239,17 @@ class SignalService : Service() {
                 for (i in 0 until syncIntervalSeconds) {
                     if (!isActive || !isStoppedState) break
 
-                    val sText = if (straightPhase.uppercase() == "GREEN") "🟢 주행" else "🔴 $straightTime"
-                    val sGreen = straightPhase.uppercase() == "GREEN"
-
-                    val lText = if (leftPhase.uppercase() == "GREEN") "🟢 주행" else "🔴 $leftTime"
-                    val lGreen = leftPhase.uppercase() == "GREEN"
+                    val sText = if (isStraightGreen) "🟢 주행" else "🔴 $straightTime"
+                    val lText = if (isLeftGreen) "🟢 주행" else "🔴 $leftTime"
 
                     // 플로팅 위젯 상태 갱신 (헤더에 실제 교차로명 표출)
                     widgetManager.updateState(
                         title = "📍 $intersectionName",
-                        straightText = sText, isStraightGreen = sGreen,
-                        leftText = lText, isLeftGreen = lGreen
+                        straightText = sText, isStraightGreen = isStraightGreen,
+                        leftText = lText, isLeftGreen = isLeftGreen
                     )
 
-                    // [추가] 단말기 알림바 실시간 로그 업데이트 (PC 연결 없이 데이터 디버깅 가능)
+                    // 단말기 알림바 실시간 로그 업데이트
                     updateNotification("연동: $intersectionName | 직진: $sText | 좌회전: $lText")
 
                     delay(1000L)
@@ -334,7 +331,7 @@ class SignalService : Service() {
                     leftText = lText, isLeftGreen = (lPhase == "GREEN")
                 )
 
-                // [추가] 단말기 알림바 실시간 로그 업데이트 (데모)
+                // 단말기 알림바 실시간 로그 업데이트 (데모)
                 updateNotification("데모: 강남역 | 직진: $sText | 좌회전: $lText")
 
                 delay(1000L)
