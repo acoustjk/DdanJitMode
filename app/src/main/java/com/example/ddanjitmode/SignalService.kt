@@ -162,8 +162,9 @@ class SignalService : Service() {
 
             var intersectionId: String? = null
             var intersectionName: String = ""
+            var errorMessage: String? = null
             
-            // 1. 근처 교차로 매칭 API 호출 (전체 리스트 중 100m 이내 최인접 교차로 탐색)
+            // 1. 근처 교차로 매칭 API 호출 (전체 리스트 중 300m 이내 최인접 교차로 탐색으로 임계치 확장)
             try {
                 val response = withContext(Dispatchers.IO) {
                     TrafficSignalApiClient.service.getItstList(pageNo = 1, numOfRows = 5000)
@@ -182,7 +183,8 @@ class SignalService : Service() {
                         Location.distanceBetween(latitude, longitude, latVal, lotVal, results)
                         val distance = results[0].toDouble()
                         
-                        if (distance < 100.0 && distance < minDistance) {
+                        // 대기열 길이와 GPS 오차 보정을 위해 300m 반경 매칭 적용
+                        if (distance < 300.0 && distance < minDistance) {
                             minDistance = distance
                             matchedItst = item
                         }
@@ -196,12 +198,13 @@ class SignalService : Service() {
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "교차로 목록 조회 API 실패: ${e.message}")
+                errorMessage = e.message ?: "네트워크 에러"
             }
 
-            // 실내 테스트 또는 비-교차로 구역인 경우 듀얼 데모 시뮬레이션 모드로 매끄럽게 전환
+            // 실내 테스트, 비-교차로 구역 또는 API 오류가 발생한 경우 데모 시뮬레이션 모드로 전환
             if (intersectionId == null) {
-                Log.w(TAG, "인근에 매칭된 신호등 교차로가 없습니다. 실내 테스트용 데모 시뮬레이션 모드를 실행합니다.")
-                runDemoSimulation()
+                Log.w(TAG, "인근에 매칭된 신호등 교차로가 없거나 API 에러가 발생하여 데모 모드로 대체합니다.")
+                runDemoSimulation(errorMessage)
                 return@launch
             }
 
@@ -229,9 +232,11 @@ class SignalService : Service() {
                         isLeftGreen = targetSignal.isLeftGreen()
                         
                         Log.d(TAG, "실서버 C-ITS 듀얼 신호 동기화: $intersectionName -> [직진] Green($isStraightGreen), Time(${straightTime}s) | [좌회전] Green($isLeftGreen), Time(${leftTime}s)")
+                        errorMessage = null // 성공 시 에러 리셋
                     }
                 } catch (e: Exception) {
                     Log.e(TAG, "신호 데이터 갱신 실패: ${e.message}. 로컬 연산을 계속합니다.")
+                    errorMessage = "신호 갱신 에러: ${e.message}"
                 }
 
                 // 5초 동안 1초 간격으로 로컬 카운트다운 및 화면 갱신
@@ -242,9 +247,10 @@ class SignalService : Service() {
                     val sText = if (isStraightGreen) "🟢 주행" else "🔴 $straightTime"
                     val lText = if (isLeftGreen) "🟢 주행" else "🔴 $leftTime"
 
-                    // 플로팅 위젯 상태 갱신 (헤더에 실제 교차로명 표출)
+                    // 플로팅 위젯 상태 갱신 (에러가 있는 경우 헤더에 함께 표출)
+                    val widgetTitle = if (errorMessage != null) "📍 API 오류: $errorMessage" else "📍 $intersectionName"
                     widgetManager.updateState(
-                        title = "📍 $intersectionName",
+                        title = widgetTitle,
                         straightText = sText, isStraightGreen = isStraightGreen,
                         leftText = lText, isLeftGreen = isLeftGreen
                     )
@@ -260,10 +266,11 @@ class SignalService : Service() {
         }
     }
 
-    // 데모 시뮬레이션 모드: 직진 신호와 좌회전 신호가 각각 차이를 두고 변환하는 실제 도로 시나리오 시뮬레이션
-    private suspend fun runDemoSimulation() {
+    // 데모 시뮬레이션 모드: 교차로 매칭이 없거나 API 오류가 있는 경우 구체적 요인을 상단에 알려주며 시뮬레이션 작동
+    private suspend fun runDemoSimulation(errorMessage: String? = null) {
+        val titleText = if (errorMessage != null) "📍 API 오류: $errorMessage" else "📍 강남역 (데모)"
         widgetManager.updateState(
-            title = "📍 데모 (로딩)",
+            title = titleText,
             straightText = "🔄 로딩", isStraightGreen = false,
             leftText = "🔄 로딩", isLeftGreen = false
         )
@@ -326,7 +333,7 @@ class SignalService : Service() {
                 }
 
                 widgetManager.updateState(
-                    title = "📍 강남역 (데모)",
+                    title = titleText,
                     straightText = sText, isStraightGreen = (sPhase == "GREEN"),
                     leftText = lText, isLeftGreen = (lPhase == "GREEN")
                 )

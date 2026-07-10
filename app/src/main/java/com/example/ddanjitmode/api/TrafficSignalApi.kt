@@ -172,9 +172,9 @@ object TrafficSignalApiClient {
                 val originalRequest = chain.request()
                 val originalUrl = originalRequest.url
 
-                // URL 쿼리에 공공데이터 ServiceKey 자동 첨부
+                // URL 쿼리에 공공데이터 ServiceKey 자동 첨부 (이중 인코딩 방지를 위해 addEncodedQueryParameter 사용)
                 val urlWithKey = originalUrl.newBuilder()
-                    .addQueryParameter("serviceKey", BuildConfig.TRAFFIC_SIGNAL_API_KEY)
+                    .addEncodedQueryParameter("serviceKey", BuildConfig.TRAFFIC_SIGNAL_API_KEY)
                     .build()
 
                 val newRequest = originalRequest.newBuilder()
